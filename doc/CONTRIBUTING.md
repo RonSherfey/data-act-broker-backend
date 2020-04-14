@@ -68,8 +68,8 @@ $ cd data-act-broker-backend
 Create and activate the virtual environment using `venv`, and ensure the right version of Python 3.5.x is being used (the latest RHEL package available for `python35u`, currently 3.5.5)
 
 ```bash
-$ pyenv install 3.5.5
-$ pyenv local 3.5.5
+$ pyenv install 3.6.1
+$ pyenv local 3.6.1
 $ python -m venv .venv/broker-backend
 $ source .venv/broker-backend/bin/activate
 ```
