@@ -12,7 +12,7 @@ We use three main branches:
 
 Only non-breaking, stable code is merged into `development` and promoted to higher branches in order to prevent disruptions to users and team members.
 
-All code to be merged should be submitted to the `development` branch via a GitHub pull request. The pull request template is available [here](/pull_request_template.md "Pull Request Template"), and faciliates code reviews and quality checks.
+All code to be merged should be submitted to the `development` branch via a GitHub pull request. The pull request template is available [here](/pull_request_template.md "Pull Request Template"), and facilitates code reviews and quality checks.
 
 ### Continuous Integration
 
@@ -99,7 +99,7 @@ $ alembic upgrade head
 ```
 This will create the alembic_version table needed for the migration process
 
-After making updates to the models, run the following in ```dataactcore/``` to autogenerate the migration script:
+After making updates to the models, run the following in ```dataactcore/``` to auto-generate the migration script:
 ```bash
 $ alembic revision --autogenerate -m [file name]
 ```
