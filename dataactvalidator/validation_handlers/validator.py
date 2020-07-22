@@ -2,11 +2,14 @@ from collections import defaultdict, namedtuple
 from datetime import datetime
 import logging
 
+from dataactcore.config import CONFIG_BROKER
 from dataactcore.models.lookups import FILE_TYPE_DICT, RULE_SEVERITY_DICT
 from dataactcore.models.validationModels import RuleSql
 from dataactcore.interfaces.db import GlobalDB
 
 logger = logging.getLogger(__name__)
+
+SQL_ERRORS_BATCH_SIZE = CONFIG_BROKER['validator_batch_size']
 
 Failure = namedtuple('Failure', ['unique_id', 'field', 'description', 'value', 'label', 'expected', 'severity'])
 ValidationFailure = namedtuple('ValidationFailure', ['unique_id', 'field_name', 'error', 'failed_value',
@@ -164,7 +167,7 @@ def cross_validate_sql(rules, submission_id, short_to_long_dict, job_id, error_c
         })
 
 
-def validate_file_by_sql(job, file_type, short_to_long_dict):
+def validate_file_by_sql(job, file_type, short_to_long_dict, queries_only=True):
     """ Check all SQL rules
 
         Args:
@@ -211,8 +214,33 @@ def validate_file_by_sql(job, file_type, short_to_long_dict):
             'start_time': rule_start
         })
 
-        failures = sess.execute(rule.rule_sql.format(job.submission_id))
-        if failures.rowcount:
+        failures = []
+        if queries_only:
+            sess.execute(rule.rule_sql.format(job.submission_id))
+        else:
+            # Alternate approach
+            proxy = sess.connection().execution_options(stream_results=True).execute(rule.rule_sql.format(job.submission_id))
+            error_row_count = 0
+            while True:
+                batch = proxy.fetchmany(SQL_ERRORS_BATCH_SIZE)
+                if not batch:
+                    break
+                for row in batch:
+                    error_row_count += 1
+            proxy.close()
+            logger.info({
+                'message': 'Rule {} found {} errors {}'.format(rule.query_name, error_row_count, log_string),
+                'message_type': 'ValidatorInfo',
+                'submission_id': job.submission_id,
+                'job_id': job.job_id,
+                'rule': rule.query_name,
+                'file_type': job.file_type.name,
+                'action': 'run_sql_validation_rule',
+                'status': 'start',
+                'start_time': rule_start
+            })
+
+        if failures and failures.rowcount:
             # Create column list (exclude row_number)
             cols = []
             exact_names = ['row_number', 'difference']

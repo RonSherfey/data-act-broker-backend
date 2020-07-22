@@ -177,15 +177,15 @@ class ValidationManager:
         # Get orm model for this file
         self.model = [ft.model for ft in FILE_TYPE if ft.name == self.file_type.name][0]
 
-        # Delete existing file level errors for this submission
-        sess.query(ErrorMetadata).filter(ErrorMetadata.job_id == self.job.job_id).delete()
-        sess.commit()
-        # Clear existing records for this submission
-        sess.query(self.model).filter_by(submission_id=self.submission_id).delete()
-        sess.commit()
-        # Clear existing flex fields for this job
-        sess.query(FlexField).filter_by(job_id=self.job.job_id).delete()
-        sess.commit()
+        # # Delete existing file level errors for this submission
+        # sess.query(ErrorMetadata).filter(ErrorMetadata.job_id == self.job.job_id).delete()
+        # sess.commit()
+        # # Clear existing records for this submission
+        # sess.query(self.model).filter_by(submission_id=self.submission_id).delete()
+        # sess.commit()
+        # # Clear existing flex fields for this job
+        # sess.query(FlexField).filter_by(job_id=self.job.job_id).delete()
+        # sess.commit()
 
         # If local, make the error report directory
         if self.is_local and not os.path.exists(self.directory):
@@ -211,7 +211,25 @@ class ValidationManager:
             self.load_file_data(sess, bucket_name, region_name)
 
             if self.file_type.name in ('appropriations', 'program_activity', 'award_financial'):
+                logger.info({
+                    'message': 'Beginning update_tas_ids for {}'.format(self.model),
+                    'message_type': 'ValidatorInfo',
+                    'submission_id': self.submission_id,
+                    'job_id': self.job.job_id,
+                    'file_type': self.file_type.name,
+                    'action': 'update_tas_ids',
+                    'status': 'start',
+                })
                 update_tas_ids(self.model, self.submission_id)
+                logger.info({
+                    'message': 'Finished update_tas_ids for {}'.format(self.model),
+                    'message_type': 'ValidatorInfo',
+                    'submission_id': self.submission_id,
+                    'job_id': self.job.job_id,
+                    'file_type': self.file_type.name,
+                    'action': 'update_tas_ids',
+                    'status': 'finish',
+                })
 
             # SQL Validations
             with open(self.error_file_path, 'a', newline='') as error_file, \
@@ -318,16 +336,16 @@ class ValidationManager:
                 region_name: the region to pull the file
         """
         loading_start = datetime.now()
-        logger.info({
-            'message': 'Beginning data loading {}'.format(self.log_str),
-            'message_type': 'ValidatorInfo',
-            'submission_id': self.submission_id,
-            'job_id': self.job.job_id,
-            'file_type': self.file_type.name,
-            'action': 'data_loading',
-            'status': 'start',
-            'start_time': loading_start
-        })
+        # logger.info({
+        #     'message': 'Beginning data loading {}'.format(self.log_str),
+        #     'message_type': 'ValidatorInfo',
+        #     'submission_id': self.submission_id,
+        #     'job_id': self.job.job_id,
+        #     'file_type': self.file_type.name,
+        #     'action': 'data_loading',
+        #     'status': 'start',
+        #     'start_time': loading_start
+        # })
 
         # Extension Check
         extension = os.path.splitext(self.file_name)[1]
@@ -354,72 +372,72 @@ class ValidationManager:
             error_csv.writerow(self.report_headers)
             warning_csv.writerow(self.report_headers)
 
-        # Adding formatting errors to error file
-        format_error_df = process_formatting_errors(self.short_rows, self.long_rows, self.report_headers)
-        for index, row in format_error_df.iterrows():
-            self.error_list.record_row_error(self.job.job_id, self.file_name, row['Field Name'],
-                                             row['error_type'], row['Row Number'], row['Rule Label'],
-                                             self.file_type.file_type_id, None, RULE_SEVERITY_DICT['fatal'])
-        format_error_df.to_csv(self.error_file_path, columns=self.report_headers, index=False, quoting=csv.QUOTE_ALL,
-                               mode='a', header=False)
-
-        # Finally open the file for loading into the database with baseline validations
-        self.reader.open_file(region_name, bucket_name, self.file_name, self.fields, bucket_name,
-                              self.get_file_name(self.error_file_name),
-                              self.daims_to_short_dict[self.file_type.file_type_id],
-                              self.short_to_daims_dict[self.file_type.file_type_id],
-                              is_local=self.is_local)
-        # Going back to reprocess the header row
-        self.reader.file.seek(0)
-        reader_obj = pd.read_csv(self.reader.file, dtype=str, delimiter=self.reader.delimiter, error_bad_lines=False,
-                                 na_filter=False, chunksize=CHUNK_SIZE, warn_bad_lines=False)
-        for chunk_df in reader_obj:
-            self.process_data_chunk(sess, chunk_df)
-
-        # Ensure validated rows match initial row count
-        if file_row_count != self.total_rows:
-            raise ResponseException('', StatusCode.CLIENT_ERROR, None, ValidationError.rowCountError)
-
-        # Add a warning if the file is blank
-        if self.file_type.file_type_id in (FILE_TYPE_DICT['appropriations'], FILE_TYPE_DICT['program_activity'],
-                                           FILE_TYPE_DICT['award_financial']) \
-                and not self.has_data and len(self.short_rows) == 0 and len(self.long_rows) == 0:
-            empty_file = {
-                'Unique ID': '',
-                'Field Name': 'Blank File',
-                'Rule Message': ValidationError.blankFileErrorMsg,
-                'Value Provided': '',
-                'Expected Value': '',
-                'Difference': '',
-                'Flex Field': '',
-                'Row Number': None,
-                'Rule Label': 'DABSBLANK',
-                'error_type': ValidationError.blankFileError
-            }
-            empty_file_df = pd.DataFrame([empty_file], columns=list(self.report_headers + ['error_type']))
-            self.error_list.record_row_error(self.job.job_id, self.file_name, empty_file['Field Name'],
-                                             empty_file['error_type'], empty_file['Row Number'],
-                                             empty_file['Rule Label'], self.file_type.file_type_id, None,
-                                             RULE_SEVERITY_DICT['warning'])
-            empty_file_df.to_csv(self.warning_file_path, columns=self.report_headers, index=False,
-                                 quoting=csv.QUOTE_ALL, mode='a', header=False)
-
-        loading_duration = (datetime.now() - loading_start).total_seconds()
-        logger.info({
-            'message': 'Completed data loading {}'.format(self.log_str),
-            'message_type': 'ValidatorInfo',
-            'submission_id': self.submission_id,
-            'job_id': self.job.job_id,
-            'file_type': self.file_type.name,
-            'action': 'data_loading',
-            'status': 'finish',
-            'start_time': loading_start,
-            'end_time': datetime.now(),
-            'duration': loading_duration,
-            'total_rows': self.total_rows
-        })
-
-        return file_row_count
+        # # Adding formatting errors to error file
+        # format_error_df = process_formatting_errors(self.short_rows, self.long_rows, self.report_headers)
+        # for index, row in format_error_df.iterrows():
+        #     self.error_list.record_row_error(self.job.job_id, self.file_name, row['Field Name'],
+        #                                      row['error_type'], row['Row Number'], row['Rule Label'],
+        #                                      self.file_type.file_type_id, None, RULE_SEVERITY_DICT['fatal'])
+        # format_error_df.to_csv(self.error_file_path, columns=self.report_headers, index=False, quoting=csv.QUOTE_ALL,
+        #                        mode='a', header=False)
+        #
+        # # Finally open the file for loading into the database with baseline validations
+        # self.reader.open_file(region_name, bucket_name, self.file_name, self.fields, bucket_name,
+        #                       self.get_file_name(self.error_file_name),
+        #                       self.daims_to_short_dict[self.file_type.file_type_id],
+        #                       self.short_to_daims_dict[self.file_type.file_type_id],
+        #                       is_local=self.is_local)
+        # # Going back to reprocess the header row
+        # self.reader.file.seek(0)
+        # reader_obj = pd.read_csv(self.reader.file, dtype=str, delimiter=self.reader.delimiter, error_bad_lines=False,
+        #                          na_filter=False, chunksize=CHUNK_SIZE, warn_bad_lines=False)
+        # for chunk_df in reader_obj:
+        #     self.process_data_chunk(sess, chunk_df)
+        #
+        # # Ensure validated rows match initial row count
+        # if file_row_count != self.total_rows:
+        #     raise ResponseException('', StatusCode.CLIENT_ERROR, None, ValidationError.rowCountError)
+        #
+        # # Add a warning if the file is blank
+        # if self.file_type.file_type_id in (FILE_TYPE_DICT['appropriations'], FILE_TYPE_DICT['program_activity'],
+        #                                    FILE_TYPE_DICT['award_financial']) \
+        #         and not self.has_data and len(self.short_rows) == 0 and len(self.long_rows) == 0:
+        #     empty_file = {
+        #         'Unique ID': '',
+        #         'Field Name': 'Blank File',
+        #         'Rule Message': ValidationError.blankFileErrorMsg,
+        #         'Value Provided': '',
+        #         'Expected Value': '',
+        #         'Difference': '',
+        #         'Flex Field': '',
+        #         'Row Number': None,
+        #         'Rule Label': 'DABSBLANK',
+        #         'error_type': ValidationError.blankFileError
+        #     }
+        #     empty_file_df = pd.DataFrame([empty_file], columns=list(self.report_headers + ['error_type']))
+        #     self.error_list.record_row_error(self.job.job_id, self.file_name, empty_file['Field Name'],
+        #                                      empty_file['error_type'], empty_file['Row Number'],
+        #                                      empty_file['Rule Label'], self.file_type.file_type_id, None,
+        #                                      RULE_SEVERITY_DICT['warning'])
+        #     empty_file_df.to_csv(self.warning_file_path, columns=self.report_headers, index=False,
+        #                          quoting=csv.QUOTE_ALL, mode='a', header=False)
+        #
+        # loading_duration = (datetime.now() - loading_start).total_seconds()
+        # logger.info({
+        #     'message': 'Completed data loading {}'.format(self.log_str),
+        #     'message_type': 'ValidatorInfo',
+        #     'submission_id': self.submission_id,
+        #     'job_id': self.job.job_id,
+        #     'file_type': self.file_type.name,
+        #     'action': 'data_loading',
+        #     'status': 'finish',
+        #     'start_time': loading_start,
+        #     'end_time': datetime.now(),
+        #     'duration': loading_duration,
+        #     'total_rows': self.total_rows
+        # })
+        #
+        # return file_row_count
 
     def process_data_chunk(self, sess, chunk_df):
         """ Loads in a chunk of the file and performs initial validations
@@ -659,6 +677,8 @@ class ValidationManager:
             a list of the row numbers that failed one of the sql-based validations
         """
         error_rows = []
+        sql_failures = validate_file_by_sql(self.job, self.file_type.name,
+                                            self.short_to_long_dict[self.file_type.file_type_id], queries_only=False)
         sql_failures = validate_file_by_sql(self.job, self.file_type.name,
                                             self.short_to_long_dict[self.file_type.file_type_id])
         for failure in sql_failures:
