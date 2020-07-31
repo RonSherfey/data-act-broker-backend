@@ -323,6 +323,9 @@ class ValidationManager:
                 region_name: the region to pull the file
         """
         loading_start = datetime.now()
+        num_proc = 1
+        if PARALLEL:
+            num_proc = MULTIPROCESSING_POOLS or os.cpu_count()
         logger.info({
             'message': 'Beginning data loading {}'.format(self.log_str),
             'message_type': 'ValidatorInfo',
@@ -331,7 +334,9 @@ class ValidationManager:
             'file_type': self.file_type.name,
             'action': 'data_loading',
             'status': 'start',
-            'start_time': loading_start
+            'start_time': loading_start,
+            'parallel': PARALLEL,
+            'num_proc': num_proc
         })
 
         # Extension Check
@@ -424,7 +429,9 @@ class ValidationManager:
             'start_time': loading_start,
             'end_time': datetime.now(),
             'duration': loading_duration,
-            'total_rows': self.total_rows
+            'total_rows': self.total_rows,
+            'parallel': PARALLEL,
+            'num_proc': num_proc
         })
 
         return file_row_count
