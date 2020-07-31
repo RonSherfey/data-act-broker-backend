@@ -591,7 +591,7 @@ class ErrorWarningTests(BaseTestValidator):
         assert report_content == expected_values
 
     def test_cross_file_errors(self):
-        for chunk_size, parallel, batch_sql in self.PARALLEL_CONFIGS:
+        for chunk_size, parallel, batch_sql in self.CONFIGS:
             self.monkeypatch.setattr(dataactvalidator.validation_handlers.validationManager, 'CHUNK_SIZE', chunk_size)
             self.monkeypatch.setattr(dataactvalidator.validation_handlers.validationManager, 'PARALLEL', parallel)
             self.monkeypatch.setattr(dataactvalidator.validation_handlers.validationManager, 'BATCH_SQL_VAL_RESULTS',
