@@ -85,20 +85,20 @@ def load_duns(sess, historic, local=None, benchmarks=None, metrics=None, reload_
     metrics['parent_update_date'] = str(updated_date)
 
 
-def download_duns(root_dir, file_name):
+def download_duns(root_dir, file_name, download=True):
     """ Downloads the requested DUNS file to root_dir
 
         Args:
             root_dir: the folder containing the DUNS file
             file_name: the name of the SAM file
-
+            download: actually download the file (set to False to check and see what's available)
         Raises:
             FileNotFoundError if the SAM HTTP API doesnt have the file requested
     """
     logger.info('Pulling {}'.format(file_name))
     url_with_params = '{}&fileName={}'.format(API_URL, file_name)
     r = requests.get(url_with_params)
-    if r.status_code == 200:
+    if r.status_code == 200 and download:
         duns_file = os.path.join(root_dir, file_name)
         open(duns_file, 'wb').write(r.content)
     elif r.status_code == 400:
