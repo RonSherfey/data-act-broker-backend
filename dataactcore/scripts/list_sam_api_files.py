@@ -1,5 +1,6 @@
 import datetime
 import logging
+import argparse
 
 from dataactcore.logging import configure_logging
 from dataactcore.scripts.load_duns import download_duns
@@ -36,10 +37,26 @@ def list_available_files(start_date):
     logger.info('Available files via SAM HTTP API')
     logger.info(available_files)
 
+def get_parser():
+    """ Generates list of command-line arguments
+
+        Returns:
+            argument parser to be used for commandline
+    """
+    parser = argparse.ArgumentParser(description='Get data from SAM and update duns table')
+    parser.add_argument("-d", "--start_date", type=str, required=True,
+                        help='The first day to start checking files (YYYY-MM-DD)')
+    return parser
+
 
 if __name__ == '__main__':
+    now = datetime.datetime.now()
+
     configure_logging()
+    parser = get_parser()
+    args = parser.parse_args()
+
 
     with create_app().app_context():
-        START_DATE = datetime.date(year=2014, month=1, day=1)
-        list_available_files(START_DATE)
+        start_date = datetime.datetime.strptime(args.start_date, '%Y-%m-%d').date()
+        list_available_files(start_date)
