@@ -25,25 +25,28 @@ def process_sam_dir(bucket, ssh_key=None):
     sftp = client.open_sftp()
     # dirlist on remote host
     sam_dir = REMOTE_SAM_DUNS_DIR if ssh_key is None else REMOTE_SAM_EXEC_COMP_DIR
-    dirlist = sftp.listdir(sam_dir)
-    logger.info('ALL FILES IN THE BUCKET')
-    logger.info([filename for filename in dirlist])
+    for version in ['', '_V2']:
+        sam_dir = sam_dir.format(version)
+        dirlist = sftp.listdir(sam_dir)
+        logger.info('ALL FILES IN THE BUCKET')
+        logger.info([filename for filename in dirlist])
 
-    # generate chronological list of daily and monthly files
-    sorted_monthly_file_names = sorted([monthly_file for monthly_file in dirlist if re.match('.*MONTHLY_V2_\d+\.ZIP',
-                                                                                             monthly_file.upper())])
-    sorted_daily_file_names = sorted([daily_file for daily_file in dirlist if re.match('.*DAILY_V2_\d+\.ZIP',
-                                                                                       daily_file.upper())])
+        # generate chronological list of daily and monthly files
+        sorted_monthly_file_names = sorted([monthly_file for monthly_file in dirlist
+                                            if re.match('.*MONTHLY{}_\d+\.ZIP'.format(version), monthly_file.upper())])
+        sorted_daily_file_names = sorted([daily_file for daily_file in dirlist
+                                          if re.match('.*DAILY{}_\d+\.ZIP'.format(version), daily_file.upper())])
 
-    # load in earliest monthly file for historic
-    copy_from_dir(root_dir, sorted_monthly_file_names[0], bucket, sftp=sftp, ssh_key=ssh_key, sam_dir=sam_dir)
+        # load in earliest monthly file for historic
+        copy_from_dir(root_dir, sorted_monthly_file_names[0], bucket, sftp=sftp, ssh_key=ssh_key, sam_dir=sam_dir,
+                      version=version)
 
-    # load daily files
-    for daily_file in sorted_daily_file_names:
-        copy_from_dir(root_dir, daily_file, bucket, sftp=sftp, ssh_key=ssh_key, sam_dir=sam_dir)
+        # load daily files
+        for daily_file in sorted_daily_file_names:
+            copy_from_dir(root_dir, daily_file, bucket, sftp=sftp, ssh_key=ssh_key, sam_dir=sam_dir, version=version)
 
 
-def copy_from_dir(root_dir, file_name, bucket, sftp=None, ssh_key=None, sam_dir=REMOTE_SAM_DUNS_DIR):
+def copy_from_dir(root_dir, file_name, bucket, sftp=None, ssh_key=None, sam_dir=REMOTE_SAM_DUNS_DIR, version=''):
     """ Process the SAM file found remotely
 
         Args:
@@ -53,6 +56,7 @@ def copy_from_dir(root_dir, file_name, bucket, sftp=None, ssh_key=None, sam_dir=
             sftp: the sftp client to pull the CSV from
             ssh_key: URI to ssh key used to pull exec comp files from SAM
             sam_dir: the remote directory to pull from
+            version: the version to pull from
     """
     file_path = os.path.join(root_dir, file_name)
     logger.info("Pulling {}".format(file_name))
@@ -67,8 +71,9 @@ def copy_from_dir(root_dir, file_name, bucket, sftp=None, ssh_key=None, sam_dir=
 
     region_name = CONFIG_BROKER['aws_region']
     s3 = boto3.client('s3', region_name=region_name)
-    dir_name = 'DUNS' if ssh_key is None else 'Executive Compensation'
-    key_name = os.path.join(dir_name, file_name)
+    data_type_dir_name = 'DUNS' if ssh_key is None else 'Executive Compensation'
+    version_dir_name = 'v1' if version == '' else 'v2'
+    key_name = os.path.join(data_type_dir_name, version_dir_name, file_name)
     logger.info("Copying to {}/{}".format(bucket, key_name))
     s3.upload_file(file_path, bucket, key_name)
     os.remove(file_path)

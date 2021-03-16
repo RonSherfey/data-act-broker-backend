@@ -18,8 +18,8 @@ from dataactcore.models.lookups import DUNS_BUSINESS_TYPE_DICT
 
 logger = logging.getLogger(__name__)
 
-REMOTE_SAM_DUNS_DIR = '/current/SAM/2_FOUO_V2/UTF-8/'
-REMOTE_SAM_EXEC_COMP_DIR = '/current/SAM/6_EXECCOMP_V2/UTF-8'
+REMOTE_SAM_DUNS_DIR = '/current/SAM/2_FOUO{}/UTF-8/'
+REMOTE_SAM_EXEC_COMP_DIR = '/current/SAM/6_EXECCOMP{}/UTF-8'
 BUSINESS_TYPES_SEPARATOR = '~'
 
 
