@@ -26,6 +26,8 @@ def process_sam_dir(bucket, ssh_key=None):
     # dirlist on remote host
     sam_dir = REMOTE_SAM_DUNS_DIR if ssh_key is None else REMOTE_SAM_EXEC_COMP_DIR
     dirlist = sftp.listdir(sam_dir)
+    logger.info('ALL FILES IN THE BUCKET')
+    logger.info([filename for filename in dirlist])
 
     # generate chronological list of daily and monthly files
     sorted_monthly_file_names = sorted([monthly_file for monthly_file in dirlist if re.match('.*MONTHLY_V2_\d+\.ZIP',
