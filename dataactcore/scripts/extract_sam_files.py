@@ -26,8 +26,8 @@ def process_sam_dir(bucket, ssh_key=None):
     # dirlist on remote host
     sam_dir = REMOTE_SAM_DUNS_DIR if ssh_key is None else REMOTE_SAM_EXEC_COMP_DIR
     for version in ['', '_V2']:
-        sam_dir = sam_dir.format(version)
-        dirlist = sftp.listdir(sam_dir)
+        sam_dir_version = sam_dir.format(version)
+        dirlist = sftp.listdir(sam_dir_version)
         logger.info('ALL FILES IN THE BUCKET')
         logger.info([filename for filename in dirlist])
 
@@ -38,12 +38,13 @@ def process_sam_dir(bucket, ssh_key=None):
                                           if re.match('.*DAILY{}_\d+\.ZIP'.format(version), daily_file.upper())])
 
         # load in earliest monthly file for historic
-        copy_from_dir(root_dir, sorted_monthly_file_names[0], bucket, sftp=sftp, ssh_key=ssh_key, sam_dir=sam_dir,
-                      version=version)
+        copy_from_dir(root_dir, sorted_monthly_file_names[0], bucket, sftp=sftp, ssh_key=ssh_key,
+                      sam_dir=sam_dir_version, version=version)
 
         # load daily files
         for daily_file in sorted_daily_file_names:
-            copy_from_dir(root_dir, daily_file, bucket, sftp=sftp, ssh_key=ssh_key, sam_dir=sam_dir, version=version)
+            copy_from_dir(root_dir, daily_file, bucket, sftp=sftp, ssh_key=ssh_key, sam_dir=sam_dir_version,
+                          version=version)
 
 
 def copy_from_dir(root_dir, file_name, bucket, sftp=None, ssh_key=None, sam_dir=REMOTE_SAM_DUNS_DIR, version=''):
