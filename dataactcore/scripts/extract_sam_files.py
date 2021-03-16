@@ -36,7 +36,7 @@ def process_sam_dir(bucket, ssh_key=None):
                                                                                        daily_file.upper())])
 
     # load in earliest monthly file for historic
-    copy_from_dir(root_dir, sorted_monthly_file_names[0], bucket, sftp=sftp, ssh_key=ssh_key)
+    copy_from_dir(root_dir, sorted_monthly_file_names[0], bucket, sftp=sftp, ssh_key=ssh_key, sam_dir=sam_dir)
 
     # load daily files
     for daily_file in sorted_daily_file_names:
