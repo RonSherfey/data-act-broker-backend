@@ -40,10 +40,10 @@ def process_sam_dir(bucket, ssh_key=None):
 
     # load daily files
     for daily_file in sorted_daily_file_names:
-        copy_from_dir(root_dir, daily_file, bucket, sftp=sftp, ssh_key=ssh_key)
+        copy_from_dir(root_dir, daily_file, bucket, sftp=sftp, ssh_key=ssh_key, sam_dir=sam_dir)
 
 
-def copy_from_dir(root_dir, file_name, bucket, sftp=None, ssh_key=None):
+def copy_from_dir(root_dir, file_name, bucket, sftp=None, ssh_key=None, sam_dir=REMOTE_SAM_DUNS_DIR):
     """ Process the SAM file found remotely
 
         Args:
@@ -52,17 +52,18 @@ def copy_from_dir(root_dir, file_name, bucket, sftp=None, ssh_key=None):
             bucket: the bucket to copy to
             sftp: the sftp client to pull the CSV from
             ssh_key: URI to ssh key used to pull exec comp files from SAM
+            sam_dir: the remote directory to pull from
     """
     file_path = os.path.join(root_dir, file_name)
     logger.info("Pulling {}".format(file_name))
     with open(file_path, 'wb') as zip_file:
         try:
-            sftp.getfo(''.join([REMOTE_SAM_EXEC_COMP_DIR, '/', file_name]), zip_file)
+            sftp.getfo(''.join([sam_dir, '/', file_name]), zip_file)
         except Exception:
             logger.debug("Socket closed. Reconnecting...")
             ssh_client = get_client(ssh_key=ssh_key)
             sftp = ssh_client.open_sftp()
-            sftp.getfo(''.join([REMOTE_SAM_EXEC_COMP_DIR, '/', file_name]), zip_file)
+            sftp.getfo(''.join([sam_dir, '/', file_name]), zip_file)
 
     region_name = CONFIG_BROKER['aws_region']
     s3 = boto3.client('s3', region_name=region_name)
