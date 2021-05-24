@@ -1550,7 +1550,7 @@ def get_data(contract_type, award_type, now, sess, sub_tier_list, county_by_name
                         len(data), contract_type, award_type)
 
         # if we got less than the full set of records, we can stop calling the feed
-        if len(data) < (MAX_ENTRIES * REQUESTS_AT_ONCE):
+        if len(data) < (MAX_ENTRIES * MAX_REQUESTS_AT_ONCE):
             # ensure we loaded the number of records we expected to, otherwise we'll need to reload
             if entries_processed != total_expected_records:
                 raise Exception("Records retrieved != Total expected records\nExpected: {}\nRetrieved: {}"
