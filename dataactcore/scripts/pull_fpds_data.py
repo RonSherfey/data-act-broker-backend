@@ -1370,6 +1370,7 @@ def get_with_exception_hand(url_string):
             # we should always expect entries, otherwise we shouldn't be calling it
             resp_dict = xmltodict.parse(resp.text, process_namespaces=True, namespaces=FPDS_NAMESPACES)
             len(list_data(resp_dict['feed']['entry']))
+            break
         except (ConnectionResetError, ReadTimeoutError, ConnectionError, ReadTimeout, KeyError) as e:
             exception_retries += 1
             request_timeout += 60
@@ -1486,7 +1487,7 @@ def get_data(contract_type, award_type, now, sess, sub_tier_list, county_by_name
             loop = asyncio.get_event_loop()
             requests_at_once = MAX_REQUESTS_AT_ONCE
             if total_expected_records - entries_already_processed < (MAX_REQUESTS_AT_ONCE * MAX_ENTRIES):
-                requests_at_once = math.ceil((total_expected_records-entries_already_processed)/MAX_REQUESTS_AT_ONCE)
+                requests_at_once = math.ceil((total_expected_records-entries_already_processed)/MAX_ENTRIES)
 
             futures = [
                 loop.run_in_executor(
