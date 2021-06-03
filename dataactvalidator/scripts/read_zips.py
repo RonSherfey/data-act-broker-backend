@@ -216,9 +216,9 @@ def parse_zip4_file(f, sess):
     while True:
         # grab the next chunk
         next_chunk = f.read(chunk_size)
-        # when streaming from S3 it reads in as bytes, we need to decode it as a utf-8 string
+        # when streaming from S3 it reads in as bytes, we need to decode it with latin-1
         if not type(next_chunk) == str:
-            next_chunk = next_chunk.decode("utf-8")
+            next_chunk = next_chunk.decode("latin-1").encode('ascii', 'ignore').decode('ascii')
 
         # add the new chunk of the file to the current chunk we're processing
         curr_chunk += next_chunk
@@ -311,9 +311,9 @@ def parse_citystate_file(f, sess):
     while True:
         # grab the next chunk
         next_chunk = f.read(chunk_size)
-        # when streaming from S3 it reads in as bytes, we need to decode it as a utf-8 string
+        # when streaming from S3 it reads in as bytes, we need to decode it
         if not type(next_chunk) == str:
-            next_chunk = next_chunk.decode("utf-8")
+            next_chunk = next_chunk.decode("latin-1").encode('ascii', 'ignore').decode('ascii')
 
         # add the new chunk of the file to the current chunk we're processing
         curr_chunk += next_chunk
